@@ -1,0 +1,54 @@
+---
+title: "GGIS 224 Final Project"
+author: "Warren Jodjana"
+date: "December 14th 2023"
+output: html_document
+---
+
+```{css, echo = FALSE}
+body {
+  font-family: Garamond;
+  font-size: 11pt;
+}
+
+.bold {
+  font-weight: bold;
+  font-size: 13pt;
+}
+
+
+
+```
+
+
+## Introduction
+
+The idea behind my final project was influenced by my childhood in Indonesia, where I faced pollution and traffic every day. The traffic conditions there are heavily influenced by private vehicles such as cars and motorcycles, which contributes significantly to air quality degradation. Furthermore, public awareness of environmental issues, while growing, still lags behind what I observed upon visiting Chicago. Chicago, despite being a highly developed city, is not immune to these challenges. Initially, I wanted to use data from Indonesia for my research, but I found that the information wasn't open-source in comparison to publicly available data from the United States. Therefore, I decided to conduct a similar investigation within Chicago, where data on all variables is readily available. Consequently, my research question is as follows:
+
+<p class="bold"> “How have vehicular emissions and traffic influence air quality trends in Chicago and how can EV vehicles play a role in reducing air pollution?” </p>
+
+By the national weather services, air quality index (AQI) serves as to indicate how polluted the air is. For this project, I have only acquired data for PM 2.5, PM 10 and nitrogen dioxide but other chemicals such as carbon monoxide can serve as indicators as well. In 2020, Chicago was ranked as the 16th most polluted city in the US and received failing grades for ozone levels, largely attributed to vehicular emissions and exacerbated by climate change level-heat. In particular, Chicago’s air pollution levels, specifically PM2.5 (fine particulate matter that have a diameter less than 2.5 micrometers) are the most common. Fine particles are most often created through burning wood or fossil fuels and often get trapped in a person’s lung’s air sacs. Particles can also be coarse, like dust or pollen which commonly passes through a lung tissue and into the bloodstream. The city’s Air Quality and Health reported that 5% of premature deaths in Chicago are linked to exposure to PM2.5.
+
+Investigating the relationships between traffic, vehicular emissions and air quality in Chicago is important for multiple reasons. This project offers insights into the efficacy of current urban planning and environmental policies in a major U.S. city. Understanding the cause-effect relationship between the variables is curcial to develop strategies to counteract air pollution, an extreme public health hazard linked to respiratory and cardiovascular diseases. Additionally, the project can guide policymakers into making the best decisions in sectors such as traffic management, urban development and sustainable transportation, including the integration of electric vehicles (EVs). Focusing on Chicago's case provides valuable information that could be applicable to other large-growing cities such as Jakarta, Tokyo and New York. Ultimately, this project aims to contribute to a broader dialogue on transforming urban environments into healthier, more sustainable spaces.
+
+## Conceptual Model
+
+The "environment" being modeled in this project, encompassing the social, built, and economic environments, provides a comprehensive framework for understanding the multifaceted nature of air quality issues in Chicago.
+
+<p class="bold"> Social Environment:</p> 
+
+This aspect focuses on the public awareness, lifestyle choices, and community behaviors that impact air quality. It includes factors such as the general awareness of environmental issues, the propensity of the population to use public transport or private vehicles, and the public's willingness to adopt new technologies like electric vehicles (EVs). The social environment also looks into the health impacts of air quality on different demographics within the city, highlighting how air pollution disproportionately affects certain communities.
+
+<p class="bold"> Built Environment: </p>
+
+This refers to the physical infrastructure of Chicago, including its roads, buildings, and public transport systems. The layout of the city, the density of traffic on its roads, and the availability and efficiency of public transport all play crucial roles in determining the level of vehicular emissions. The built environment also encompasses urban planning and policy decisions, such as zoning laws and traffic management strategies, which directly affect traffic flow and, consequently, air quality.
+
+<p class="bold"> Economic Environment: </p>
+
+This component looks at the economic factors that influence air quality, such as the cost of owning and operating vehicles, the economic incentives or disincentives for using EVs, and the funding available for public transport and infrastructure projects. The economic environment also includes the analysis of the economic impacts of air pollution, such as healthcare costs and lost productivity due to health issues stemming from poor air quality.
+
+### Urban fabric and city methodologies
+
+Incorporating information from the "Urban fabric and city methodologies" presentation from week 8 into the modeling of the environment within this project, we can see the nuanced interplay between the social, built and economic environments. The social environment is not just about the public awareness but also reflect the deeper socio-spatial fabric of Chicago, where neighborhood characteristics is able to shape the environmental attitudes. This concept is included in the 5D's of the built environment, specifically focusing on **Design**, or the characteristics of street networks within an area. Attributes such as intersections, pedestrian crossings, and street widths are closely linked to traffic density in specific areas. Additionally, the implementation of new regulations regarding the use of electric vehicles (EVs), such as HOV lane access, is expected to influence people to make the switch.
+
+## Data Wrangling
