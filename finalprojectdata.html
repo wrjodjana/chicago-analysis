@@ -9,10 +9,10 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Warren Jodjana, GGIS 224" />
+<meta name="author" content="Warren Jodjana" />
 
 
-<title>Environmental Data Science Final Project</title>
+<title>GGIS 224 Final Project Data Wrangling and Spatial Operations</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -1496,150 +1496,391 @@ border-radius: 0px;
 
 
 
-<h1 class="title toc-ignore">Environmental Data Science Final
-Project</h1>
-<h4 class="author">Warren Jodjana, GGIS 224</h4>
+<h1 class="title toc-ignore">GGIS 224 Final Project Data Wrangling and
+Spatial Operations</h1>
+<h4 class="author">Warren Jodjana</h4>
 <h4 class="date">December 14th 2023</h4>
 
 </div>
 
 
-<style type="text/css">
-body {
-font-family: Garamond;
-font-size: 11pt;
-}
-.bold {
-font-weight: bold;
-font-size: 13pt;
-}
-</style>
-<div id="introduction" class="section level1">
-<h1>Introduction</h1>
-<p>The idea behind my final project was influenced by my childhood in
-Indonesia, where I faced pollution and traffic every day. The traffic
-conditions there are heavily influenced by private vehicles such as cars
-and motorcycles, which contributes significantly to air quality
-degradation. Furthermore, public awareness of environmental issues,
-while growing, still lags behind what I observed upon visiting Chicago.
-Chicago, despite being a highly developed city, is not immune to these
-challenges. Initially, I wanted to use data from Indonesia for my
-research, but I found that the information wasn’t publicly available in
-comparison to the United States. Therefore, I decided to conduct a
-similar investigation within Chicago, where data is open-source.
-Consequently, my research question is as follows:</p>
-<p class="bold">
-“How have vehicular emissions and traffic influence air quality trends
-in Chicago and how can EV vehicles play a role in reducing air
-pollution?”
-</p>
-<p>According to the national weather services, air quality index (AQI)
-serves as to quantify how polluted the air is. For this project, I have
-only acquired data for PM2.5, Ozone and nitrogen dioxide but other
-chemicals such as carbon monoxide can serve as indicators as well. In
-2020, Chicago was ranked as the 16th most polluted city in the US and
-received failing grades for ozone levels, largely attributed to
-vehicular emissions and exacerbated by climate change level-heat. In
-particular, Chicago’s air pollution levels, specifically PM2.5 (fine
-particulate matter that have a diameter less than 2.5 micrometers) are
-the most common. Fine particles are most often created through burning
-wood or fossil fuels and often get trapped in a person’s lung’s air
-sacs. Particles can also be coarse, like dust or pollen which commonly
-passes through a lung tissue and into the bloodstream. The city’s Air
-Quality and Health reported that 5% of premature deaths in Chicago are
-linked to exposure to PM2.5.</p>
-<p>Investigating the relationships between traffic, vehicular emissions
-and air quality in Chicago is important for multiple reasons. This
-project offers insights into the efficacy of current urban planning and
-environmental policies in a major U.S. city. Understanding the
-cause-effect relationship between the variables is crucial to develop
-strategies to counteract air pollution, an extreme public health hazard
-linked to respiratory and cardiovascular diseases. Additionally, the
-project can guide policymakers into making the best decisions in sectors
-such as traffic management, urban development and sustainable
-transportation, including the integration of electric vehicles (EVs).
-Focusing on Chicago’s case provides valuable information that could be
-applicable to other large-growing cities such as Jakarta, Tokyo and New
-York. Ultimately, this project aims to contribute to a broader dialogue
-on transforming urban environments into healthier, more sustainable
-spaces.</p>
+<div id="environment-setup" class="section level2">
+<h2>Environment Setup</h2>
+<pre class="r"><code>library(dplyr)
+library(sf)
+library(terra)
+library(tmap)
+library(readxl)
+library(data.table)</code></pre>
 </div>
-<div id="conceptual-model" class="section level1">
-<h1>Conceptual Model</h1>
-<p>The “environment” being modeled in this project is represented in
-three aspects: social, built and economic. It provides a comprehensive
-framework to understand the multifaceted nature of air quality and
-vehicular emissions in Chicago.</p>
-<div id="social-environment" class="section level3">
-<h3>Social Environment</h3>
-<p>This aspect focuses on the public awareness, lifestyle choices, and
-community behaviors that impact air quality. It includes factors such as
-the general awareness of environmental issues, the propensity of the
-population to use public transport or private vehicles, and the public’s
-willingness to adopt new technologies like EVs. The social environment
-also looks into the health impacts of air quality on different
-demographics within the city, highlighting how air pollution
-disproportionately affects certain communities.</p>
+<div id="clean-wrangle-data" class="section level1">
+<h1>Clean &amp; Wrangle Data</h1>
+<div id="air-quality-index-aqi" class="section level2">
+<h2>Air Quality Index (AQI)</h2>
+<div id="load-aqi-data-using-read_excel" class="section level3">
+<h3>Load AQI data using <code>read_excel</code></h3>
+<pre class="r"><code>airquality &lt;- read_excel(&quot;air-quality-index.xlsx&quot;)
+glimpse(airquality)</code></pre>
+<pre><code>## Rows: 801
+## Columns: 4
+## $ geoid     &lt;dbl&gt; 17031291600, 17031580200, 17031590500, 17031590700, 17031610…
+## $ CMAQ_NO2  &lt;dbl&gt; 19.05938, 20.31526, 19.64178, 17.46373, 18.57812, 16.14407, …
+## $ CMAQ_O3   &lt;dbl&gt; 28.53719, 27.68554, 28.14529, 29.99657, 29.17645, 30.71135, …
+## $ CMAQ_PM25 &lt;dbl&gt; 11.103176, 11.435322, 11.288680, 10.704017, 10.921030, 10.60…</code></pre>
 </div>
-<div id="built-environment" class="section level3">
-<h3>Built Environment</h3>
-<p>This refers to the physical infrastructure of Chicago, including its
-roads, buildings, and public transport systems. The layout of the city,
-the density of traffic on its roads, and the availability and efficiency
-of public transport all play crucial roles in determining the level of
-vehicular emissions. The built environment also encompasses urban
-planning and policy decisions, such as zoning laws and traffic
-management strategies, which directly affect traffic flow.</p>
+<div id="load-tract-data-using-st_read" class="section level3">
+<h3>Load tract data using <code>st_read</code></h3>
+<pre class="r"><code>airquality_tracts &lt;- st_read(&quot;tracts-aqi.geojson&quot;)</code></pre>
+<pre><code>## Reading layer `tracts-aqi&#39; from data source 
+##   `C:\Users\wrjod\OneDrive\Documents\GitHub\ggis224-finalproject\tracts-aqi.geojson&#39; 
+##   using driver `GeoJSON&#39;
+## Simple feature collection with 801 features and 9 fields
+## Geometry type: MULTIPOLYGON
+## Dimension:     XY
+## Bounding box:  xmin: -87.94025 ymin: 41.64429 xmax: -87.52366 ymax: 42.02392
+## Geodetic CRS:  WGS 84</code></pre>
+<pre class="r"><code>glimpse(airquality_tracts)</code></pre>
+<pre><code>## Rows: 801
+## Columns: 10
+## $ statefp10  &lt;chr&gt; &quot;17&quot;, &quot;17&quot;, &quot;17&quot;, &quot;17&quot;, &quot;17&quot;, &quot;17&quot;, &quot;17&quot;, &quot;17&quot;, &quot;17&quot;, &quot;17&quot;,…
+## $ name10     &lt;chr&gt; &quot;8424&quot;, &quot;8403&quot;, &quot;8411&quot;, &quot;8412&quot;, &quot;8390&quot;, &quot;8382&quot;, &quot;6503.01&quot;, …
+## $ commarea_n &lt;chr&gt; &quot;44&quot;, &quot;59&quot;, &quot;34&quot;, &quot;31&quot;, &quot;32&quot;, &quot;28&quot;, &quot;65&quot;, &quot;53&quot;, &quot;76&quot;, &quot;77&quot;,…
+## $ namelsad10 &lt;chr&gt; &quot;Census Tract 8424&quot;, &quot;Census Tract 8403&quot;, &quot;Census Tract 841…
+## $ commarea   &lt;chr&gt; &quot;44&quot;, &quot;59&quot;, &quot;34&quot;, &quot;31&quot;, &quot;32&quot;, &quot;28&quot;, &quot;65&quot;, &quot;53&quot;, &quot;76&quot;, &quot;77&quot;,…
+## $ geoid10    &lt;chr&gt; &quot;17031842400&quot;, &quot;17031840300&quot;, &quot;17031841100&quot;, &quot;17031841200&quot;,…
+## $ notes      &lt;chr&gt; &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;,…
+## $ tractce10  &lt;chr&gt; &quot;842400&quot;, &quot;840300&quot;, &quot;841100&quot;, &quot;841200&quot;, &quot;839000&quot;, &quot;838200&quot;,…
+## $ countyfp10 &lt;chr&gt; &quot;031&quot;, &quot;031&quot;, &quot;031&quot;, &quot;031&quot;, &quot;031&quot;, &quot;031&quot;, &quot;031&quot;, &quot;031&quot;, &quot;03…
+## $ geometry   &lt;MULTIPOLYGON [°]&gt; MULTIPOLYGON (((-87.62405 4..., MULTIPOLYGON (…</code></pre>
 </div>
-<div id="economic-environment" class="section level3">
-<h3>Economic Environment</h3>
-<p>This component looks at the economic factors that influence air
-quality, such as the cost of owning and operating vehicles, the economic
-incentives or disincentives for using EVs, and the funding available for
-public transport and infrastructure projects. The economic environment
-also includes the analysis of the economic impacts of air pollution,
-such as healthcare costs and lost productivity due to health issues
-stemming from poor air quality.</p>
+<div id="merge-data-using-geoid" class="section level3">
+<h3>Merge data using geoid</h3>
+<pre class="r"><code>airquality &lt;- merge(airquality_tracts, airquality, by.x=&quot;geoid10&quot;, by.y=&quot;geoid&quot;, all.x=TRUE)</code></pre>
 </div>
-<div id="urban-fabric-and-city-methodologies" class="section level3">
-<h3>Urban fabric and city methodologies</h3>
-<p>We can use the information from week 8’s lecture into this project.
-The social environment is not just about the public awareness but also
-reflect the deeper socio-spatial fabric of Chicago, where neighborhood
-characteristics is able to shape the environmental attitudes. This
-concept is included in the 5D’s of the built environment, specifically
-focusing on <strong>Design</strong>, or the characteristics of street
-networks within an area. Attributes such as intersections, pedestrian
-crossings, and street widths are closely linked to traffic density in
-specific areas. Additionally, the implementation of benefits regarding
-the use of electric vehicles (EVs), such as HOV lane access, is expected
-to influence people to make the switch. The built environment’s focus
-shifts from general infrastructure to specific urban design elements
-that dictate traffic flow. In terms of the 5D’s, all could be
-incorporated to the built environment, however the most prevalent ones
-include <strong>Destination Accessibility</strong>. Attributes includes
-transit route density, distance to public transportation and number of
-stations per unit area. Quantifying these attributes can help in
-building a more comprehensive picture of the issue of traffic.Through
-the economic environment, the intersection between economic changes and
-urban morphology becomes more important, as it represents how the
-spatial layout of the city influences the economic feasibility of
-sustainable transportation such as EVs and the usage of private vehicles
-over public transport. Within the 5D’s, this can be represented through
-<strong>Distance to Transit</strong> which includes variables such as
-distance to CBD and employment numbers within a certain radius.</p>
+<div id="subset-data" class="section level3">
+<h3>Subset data</h3>
+<pre class="r"><code>airquality &lt;- airquality %&gt;%
+  select(-c(&quot;statefp10&quot;, &quot;commarea_n&quot;, &quot;commarea&quot;, &quot;notes&quot;, &quot;countyfp10&quot;))</code></pre>
+</div>
+<div id="inspect-data-using-data.table" class="section level3">
+<h3>Inspect data using <code>data.table</code></h3>
+<pre class="r"><code>data.table(airquality)</code></pre>
+<pre><code>##          geoid10 name10          namelsad10 tractce10 CMAQ_NO2  CMAQ_O3
+##   1: 17031010100    101    Census Tract 101    010100 11.07882 35.63879
+##   2: 17031010201 102.01 Census Tract 102.01    010201 11.62339 35.07472
+##   3: 17031010202 102.02 Census Tract 102.02    010202 11.23748 35.50884
+##   4: 17031010300    103    Census Tract 103    010300 10.96102 36.05563
+##   5: 17031010400    104    Census Tract 104    010400 11.43238 35.70695
+##  ---                                                                   
+## 797: 17031843700   8437   Census Tract 8437    843700 19.47959 28.76974
+## 798: 17031843800   8438   Census Tract 8438    843800 16.14407 30.71135
+## 799: 17031843900   8439   Census Tract 8439    843900 11.91338 34.78665
+## 800: 17031980000   9800   Census Tract 9800    980000 19.21362 28.57602
+## 801: 17031980100   9801   Census Tract 9801    980100 16.04343 30.61503
+##      CMAQ_PM25 geometry
+##   1:  8.636906  &lt;XY[1]&gt;
+##   2:  8.948587  &lt;XY[1]&gt;
+##   3:  8.700630  &lt;XY[1]&gt;
+##   4:  8.518667  &lt;XY[1]&gt;
+##   5:  8.615976  &lt;XY[1]&gt;
+##  ---                   
+## 797: 10.971199  &lt;XY[1]&gt;
+## 798: 10.605793  &lt;XY[1]&gt;
+## 799:  8.794460  &lt;XY[1]&gt;
+## 800: 10.323887  &lt;XY[1]&gt;
+## 801: 11.711032  &lt;XY[1]&gt;</code></pre>
+</div>
+<div id="save-cleaned-data" class="section level3">
+<h3>Save cleaned data</h3>
+<pre class="r"><code>write.csv(airquality, &quot;airquality.csv&quot;)</code></pre>
 </div>
 </div>
-<div id="data-wrangling" class="section level1">
-<h1>Data Wrangling</h1>
-<div id="air-quality-index-aqi" class="section level3">
-<h3>Air Quality Index (AQI)</h3>
+<div id="traffic-vehicular-emissions" class="section level2">
+<h2>Traffic &amp; Vehicular Emissions</h2>
+<div id="load-traffic-data-using-fread" class="section level3">
+<h3>Load traffic data using <code>fread</code></h3>
+<pre class="r"><code>traffic &lt;- fread(&quot;traffic-old.csv&quot;)
+glimpse(traffic)</code></pre>
+<pre><code>## Rows: 1,279
+## Columns: 9
+## $ ID                                            &lt;int&gt; 414, 176, 1367, 316, 129…
+## $ `Traffic Volume Count Location  Address`      &lt;chr&gt; &quot;5838 West&quot;, &quot;320 East&quot;,…
+## $ Street                                        &lt;chr&gt; &quot;Lake St&quot;, &quot;76th St&quot;, &quot;5…
+## $ `Date of Count`                               &lt;chr&gt; &quot;11/14/2006&quot;, &quot;03/28/200…
+## $ `Total Passing Vehicle Volume`                &lt;int&gt; 7100, 8600, 53500, 700, …
+## $ `Vehicle Volume By Each Direction of Traffic` &lt;chr&gt; &quot;East Bound: 3600 / West…
+## $ Latitude                                      &lt;dbl&gt; 41.88790, 41.75654, 41.7…
+## $ Longitude                                     &lt;dbl&gt; -87.77106, -87.61733, -8…
+## $ Location                                      &lt;chr&gt; &quot;(41.887904, -87.771064)…</code></pre>
 </div>
-<div id="traffic-vehicular-emissions" class="section level3">
-<h3>Traffic &amp; Vehicular Emissions</h3>
+<div id="convert-to-spatial-format" class="section level3">
+<h3>Convert to spatial format</h3>
+<pre class="r"><code>traffic &lt;- st_as_sf(traffic, coords = c(&quot;Longitude&quot;, &quot;Latitude&quot;), crs = 4326)</code></pre>
 </div>
-<div id="electric-vehicles" class="section level3">
-<h3>Electric Vehicles</h3>
+<div id="inspect-data-using-data.table-1" class="section level3">
+<h3>Inspect data using <code>data.table</code></h3>
+<pre class="r"><code>data.table(traffic)</code></pre>
+<pre><code>##         ID Traffic Volume Count Location  Address      Street Date of Count
+##    1:  414                              5838 West     Lake St    11/14/2006
+##    2:  176                               320 East     76th St    03/28/2006
+##    3: 1367                              1730 East     57th Dr    08/24/2006
+##    4:  316                               125 East     24th St    03/30/2006
+##    5: 1294                              2924 East    130th St    08/29/2006
+##   ---                                                                      
+## 1275:  257                               256 East     35th St    03/29/2006
+## 1276:  950                             2032 North  Pulaski Rd    10/05/2006
+## 1277:  118                             6020 South  Halsted St    03/21/2006
+## 1278: 1091                              3454 West Franklin St    10/19/2006
+## 1279: 1045                               316 West     51st St    10/19/2006
+##       Total Passing Vehicle Volume Vehicle Volume By Each Direction of Traffic
+##    1:                         7100         East Bound: 3600 / West Bound: 3500
+##    2:                         8600         East Bound: 3800 / West Bound: 4800
+##    3:                        53500       East Bound: 27800 / West Bound: 25700
+##    4:                          700           East Bound: 400 / West Bound: 300
+##    5:                         4200         East Bound: 2300 / West Bound: 1900
+##   ---                                                                         
+## 1275:                        10200         East Bound: 4800 / West Bound: 5400
+## 1276:                        21300     North Bound: 10800 / South Bound: 10500
+## 1277:                        13200       North Bound: 6900 / South Bound: 6300
+## 1278:                         5000         East Bound: 2200 / West Bound: 2800
+## 1279:                        14400         East Bound: 8100 / West Bound: 6300
+##                      Location                   geometry
+##    1: (41.887904, -87.771064)  POINT (-87.77106 41.8879)
+##    2: (41.756542, -87.617335) POINT (-87.61733 41.75654)
+##    3: (41.792663, -87.582231) POINT (-87.58223 41.79266)
+##    4: (41.849302, -87.622658)  POINT (-87.62266 41.8493)
+##    5: (41.659177, -87.552112) POINT (-87.55211 41.65918)
+##   ---                                                   
+## 1275: (41.831081, -87.619334) POINT (-87.61933 41.83108)
+## 1276:  (41.918169, -87.72659) POINT (-87.72659 41.91817)
+## 1277:  (41.78453, -87.644905)  POINT (-87.6449 41.78453)
+## 1278: (41.890003, -87.713444)    POINT (-87.71344 41.89)
+## 1279: (41.801796, -87.633948)  POINT (-87.63395 41.8018)</code></pre>
+</div>
+<div id="save-cleaned-data-1" class="section level3">
+<h3>Save cleaned data</h3>
+<pre class="r"><code>write.csv(traffic, &quot;traffic.csv&quot;)</code></pre>
+</div>
+</div>
+<div id="electric-vehicles" class="section level2">
+<h2>Electric Vehicles</h2>
+<div id="load-alternative-fuel-data-using-fread" class="section level3">
+<h3>Load Alternative Fuel data using <code>fread</code></h3>
+<pre class="r"><code>alternativefuel &lt;- fread(&quot;alternativefuel.csv&quot;)</code></pre>
+</div>
+<div id="convert-to-spatial-format-1" class="section level3">
+<h3>Convert to spatial format</h3>
+<pre class="r"><code>alternativefuel &lt;- st_as_sf(alternativefuel, coords = c(&quot;Longitude&quot;, &quot;Latitude&quot;), crs=4326)
+data.table(alternativefuel)</code></pre>
+<pre><code>##          ID Fuel Type Code                                   Station Name
+##   1:  33089            E85                           City of Chicago FS#4
+##   2: 180625           ELEC                        PEOPLES GAS CENTRAL EV2
+##   3: 172397           ELEC                  IRVINE  CO  OFC 71SW B2 02-03
+##   4: 205433           ELEC  Cityfront Place Parking Garage - Floor 2 Left
+##   5: 201403           ELEC                            DRAKE TOWER DRAKE 1
+##  ---                                                                     
+## 333: 163425           ELEC                    BUCK MANAGEMENT LEVEL 2 327
+## 334:  61218           ELEC                 PARKING GARAGE 111SW STATION 2
+## 335: 151753           ELEC           Jewel Osco 4250 N Lincoln Chicago IL
+## 336: 114160           ELEC Millennium Lakeside Garage - Tesla Destination
+## 337:  62312            CNG                      Ozinga Energy - Lumber St
+##                   Street Address
+##   1:                 3746 S Iron
+##   2: 4207 W 35th Pl Central Shop
+##   3:              71 S Wacker Dr
+##   4:        400 N. McClurg Court
+##   5:             172 E Walton Pl
+##  ---                            
+## 333:               845 W Madison
+## 334:             111 S Wacker Dr
+## 335:              4250 N Lincoln
+## 336:             5 S Columbus Dr
+## 337:            2222 S Lumber St
+##                                                                                                    Intersection Directions
+##   1:                                                                                                         Iron and 37th
+##   2:                                                                                                                      
+##   3:                                                                                                                      
+##   4: Located on the 2nd floor of the parking garage on the south side of the elevators. This is the left charging station.
+##   5:                                                                                                                      
+##  ---                                                                                                                      
+## 333:                                                                                                                      
+## 334:                                                                                                                      
+## 335:                                                                                                                      
+## 336:                                                                                                                      
+## 337:                                                                                  2 Blocks East of Cermak and Halsted.
+##         City State   ZIP Plus4              Station Phone Status Code
+##   1: Chicago    IL 60609    NA                                      E
+##   2: Chicago    IL 60646    NA               888-758-4389           T
+##   3: Chicago    IL 60606    NA               888-758-4389           E
+##   4: Chicago    IL 60611    NA               800-663-5633           T
+##   5: Chicago    IL 60611    NA               888-758-4389           E
+##  ---                                                                 
+## 333: Chicago    IL 60607    NA               888-758-4389           E
+## 334: Chicago    IL 60606    NA               888-758-4389           E
+## 335: Chicago    IL 60618    NA               888-264-2208           E
+## 336: Chicago    IL 60603    NA 312-616-0600  877-798-3752           E
+## 337: Chicago    IL 60616    NA               888-656-0141           E
+##      Expected Date          Groups With Access Code
+##   1:                      Private - Government only
+##   2:    12/09/2023 TEMPORARILY UNAVAILABLE (Public)
+##   3:                                         Public
+##   4:    12/20/2022 TEMPORARILY UNAVAILABLE (Public)
+##   5:                                         Public
+##  ---                                               
+## 333:                                         Public
+## 334:                                         Public
+## 335:                                         Public
+## 336:                                         Public
+## 337:                                        Private
+##                                                                                                                                              Access Days Time
+##   1:                                                                                                                                                         
+##   2:                                                                                                                                           24 hours daily
+##   3:                                                                                                                                           24 hours daily
+##   4:                                                                                                                                           24 hours daily
+##   5:                                                                                                                                           24 hours daily
+##  ---                                                                                                                                                         
+## 333:                                                                                                                                           24 hours daily
+## 334:                                                                                                                                           24 hours daily
+## 335: Mon 6:00am - 11:59pm; Tue 6:00am - 11:59pm; Wed 6:00am - 11:59pm; Thu 6:00am - 11:59pm; Fri 6:00am - 11:59pm; Sat 6:00am - 11:59pm; Sun 6:00am - 11:59pm
+## 336:                                                                                                                                                         
+## 337:                                                                                                                                                         
+##      Cards Accepted BD Blends NG Fill Type Code NG PSI EV Level1 EVSE Num
+##   1:                                                NA                 NA
+##   2:                                                NA                 NA
+##   3:                                                NA                 NA
+##   4:                                                NA                 NA
+##   5:                                                NA                 NA
+##  ---                                                                     
+## 333:                                                NA                 NA
+## 334:                                                NA                 NA
+## 335:                                                NA                 NA
+## 336:                                                NA                 NA
+## 337:                                          Q   3600                 NA
+##      EV Level2 EVSE Num EV DC Fast Count EV Other Info          EV Network
+##   1:                 NA               NA            NA                    
+##   2:                  2               NA            NA ChargePoint Network
+##   3:                  2               NA            NA ChargePoint Network
+##   4:                  1               NA            NA       Blink Network
+##   5:                  2               NA            NA ChargePoint Network
+##  ---                                                                      
+## 333:                  2               NA            NA ChargePoint Network
+## 334:                  2               NA            NA ChargePoint Network
+## 335:                  2               NA            NA               Volta
+## 336:                 11               NA            NA   Tesla Destination
+## 337:                 NA               NA            NA                    
+##                                  EV Network Web Geocode Status
+##   1:                                                     200-8
+##   2:                http://www.chargepoint.com/            GPS
+##   3:                http://www.chargepoint.com/            GPS
+##   4:              http://www.blinkcharging.com/            GPS
+##   5:                http://www.chargepoint.com/            GPS
+##  ---                                                          
+## 333:                http://www.chargepoint.com/            GPS
+## 334:                http://www.chargepoint.com/            GPS
+## 335:                 https://voltacharging.com/            GPS
+## 336: https://www.tesla.com/destination-charging          200-8
+## 337:                                                     200-8
+##      Date Last Confirmed                   Updated At Owner Type Code
+##   1:          09/14/2023 09/14/2023 09:01:49 AM +0000              LG
+##   2:          12/13/2023 12/12/2023 06:38:23 PM +0000                
+##   3:          12/13/2023 12/12/2023 06:13:10 PM +0000                
+##   4:          12/13/2023 12/12/2023 06:08:15 PM +0000                
+##   5:          12/13/2023 12/12/2023 06:54:18 PM +0000                
+##  ---                                                                 
+## 333:          12/13/2023 12/12/2023 06:40:53 PM +0000                
+## 334:          12/13/2023 12/12/2023 06:26:55 PM +0000                
+## 335:          12/13/2023 12/12/2023 07:28:45 PM +0000                
+## 336:          10/06/2022 01/18/2023 09:15:20 AM +0000               P
+## 337:          06/14/2022 12/06/2023 10:22:24 AM +0000               P
+##      Federal Agency ID Federal Agency Name  Open Date Hydrogen Status Link
+##   1:                NA                     10/15/2008                   NA
+##   2:                NA                     01/27/2021                   NA
+##   3:                NA                     01/27/2021                   NA
+##   4:                NA                     12/22/2021                   NA
+##   5:                NA                     11/19/2021                   NA
+##  ---                                                                      
+## 333:                NA                     06/17/2020                   NA
+## 334:                NA                     04/12/2014                   NA
+## 335:                NA                     08/30/2019                   NA
+## 336:                NA                     01/02/2019                   NA
+## 337:                NA                     09/01/2012                   NA
+##      NG Vehicle Class LPG Primary E85 Blender Pump                  Location
+##   1:                           NA            FALSE   (41.826171, -87.659383)
+##   2:                           NA               NA   (41.989265, -87.730213)
+##   3:                           NA               NA   (41.880925, -87.636038)
+##   4:                           NA               NA (41.8891899, -87.6181012)
+##   5:                           NA               NA   (41.900228, -87.622669)
+##  ---                                                                        
+## 333:                           NA               NA   (41.880655, -87.648861)
+## 334:                           NA               NA   (41.880164, -87.636483)
+## 335:                           NA               NA  (41.9587395, -87.682646)
+## 336:                           NA               NA   (41.882094, -87.620496)
+## 337:               HD          NA               NA   (41.852403, -87.642494)
+##                        geometry
+##   1: POINT (-87.65938 41.82617)
+##   2: POINT (-87.73021 41.98927)
+##   3: POINT (-87.63604 41.88092)
+##   4:  POINT (-87.6181 41.88919)
+##   5: POINT (-87.62267 41.90023)
+##  ---                           
+## 333: POINT (-87.64886 41.88065)
+## 334: POINT (-87.63648 41.88016)
+## 335: POINT (-87.68265 41.95874)
+## 336:  POINT (-87.6205 41.88209)
+## 337:  POINT (-87.64249 41.8524)</code></pre>
+</div>
+<div id="subset-data-1" class="section level3">
+<h3>Subset data</h3>
+<pre class="r"><code>electric_vehicles &lt;- alternativefuel %&gt;%
+  select(`ID`, `Fuel Type Code`, `Station Name`, `Street Address`, `Location`, `geometry`) %&gt;%
+  filter(`Fuel Type Code` == &quot;ELEC&quot;) %&gt;%
+  mutate(`Street Address` = ifelse(`Station Name` == &quot;Paul Simon Chicago JCC&quot;, &quot;3348 S Kedzie Ave&quot;, `Street Address`)) %&gt;%
+  select(-c(&quot;Fuel Type Code&quot;))</code></pre>
+</div>
+<div id="inspect-data-using-data.table-2" class="section level3">
+<h3>Inspect data using <code>data.table</code></h3>
+<pre class="r"><code>data.table(electric_vehicles)</code></pre>
+<pre><code>##          ID                                   Station Name
+##   1: 180625                        PEOPLES GAS CENTRAL EV2
+##   2: 172397                  IRVINE  CO  OFC 71SW B2 02-03
+##   3: 205433  Cityfront Place Parking Garage - Floor 2 Left
+##   4: 201403                            DRAKE TOWER DRAKE 1
+##   5: 196870                         Paul Simon Chicago JCC
+##  ---                                                      
+## 305: 173546                        UNITED ORD LOT UNITED 5
+## 306: 163425                    BUCK MANAGEMENT LEVEL 2 327
+## 307:  61218                 PARKING GARAGE 111SW STATION 2
+## 308: 151753           Jewel Osco 4250 N Lincoln Chicago IL
+## 309: 114160 Millennium Lakeside Garage - Tesla Destination
+##                   Street Address                  Location
+##   1: 4207 W 35th Pl Central Shop   (41.989265, -87.730213)
+##   2:              71 S Wacker Dr   (41.880925, -87.636038)
+##   3:        400 N. McClurg Court (41.8891899, -87.6181012)
+##   4:             172 E Walton Pl   (41.900228, -87.622669)
+##   5:           3348 S Kedzie Ave   (41.878114, -87.629798)
+##  ---                                                      
+## 305:      5600 Bessie Coleman Dr    (41.98128, -87.888622)
+## 306:               845 W Madison   (41.880655, -87.648861)
+## 307:             111 S Wacker Dr   (41.880164, -87.636483)
+## 308:              4250 N Lincoln  (41.9587395, -87.682646)
+## 309:             5 S Columbus Dr   (41.882094, -87.620496)
+##                        geometry
+##   1: POINT (-87.73021 41.98927)
+##   2: POINT (-87.63604 41.88092)
+##   3:  POINT (-87.6181 41.88919)
+##   4: POINT (-87.62267 41.90023)
+##   5:  POINT (-87.6298 41.87811)
+##  ---                           
+## 305: POINT (-87.88862 41.98128)
+## 306: POINT (-87.64886 41.88065)
+## 307: POINT (-87.63648 41.88016)
+## 308: POINT (-87.68265 41.95874)
+## 309:  POINT (-87.6205 41.88209)</code></pre>
+</div>
+<div id="save-cleaned-data-2" class="section level3">
+<h3>Save cleaned data</h3>
+<pre class="r"><code>write.csv(electric_vehicles, &quot;electric-vehicles.csv&quot;)</code></pre>
+</div>
 </div>
 </div>
 

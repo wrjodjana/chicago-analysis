@@ -1,8 +1,12 @@
 ---
-title: "GGIS 224 Final Project"
-author: "Warren Jodjana"
+title: "Environmental Data Science Final Project"
+author: "Warren Jodjana, GGIS 224"
 date: "December 14th 2023"
-output: html_document
+output:
+  html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
 ---
 
 ```{css, echo = FALSE}
@@ -21,34 +25,45 @@ body {
 ```
 
 
-## Introduction
+# Introduction
 
 The idea behind my final project was influenced by my childhood in Indonesia, where I faced pollution and traffic every day. The traffic conditions there are heavily influenced by private vehicles such as cars and motorcycles, which contributes significantly to air quality degradation. Furthermore, public awareness of environmental issues, while growing, still lags behind what I observed upon visiting Chicago. Chicago, despite being a highly developed city, is not immune to these challenges. Initially, I wanted to use data from Indonesia for my research, but I found that the information wasn't publicly available in comparison to the United States. Therefore, I decided to conduct a similar investigation within Chicago, where data is open-source. Consequently, my research question is as follows:
 
 <p class="bold"> “How have vehicular emissions and traffic influence air quality trends in Chicago and how can EV vehicles play a role in reducing air pollution?” </p>
 
-According to the national weather services, air quality index (AQI) serves as to quantify how polluted the air is. For this project, I have only acquired data for PM2.5, PM10 and nitrogen dioxide but other chemicals such as carbon monoxide can serve as indicators as well. In 2020, Chicago was ranked as the 16th most polluted city in the US and received failing grades for ozone levels, largely attributed to vehicular emissions and exacerbated by climate change level-heat. In particular, Chicago’s air pollution levels, specifically PM2.5 (fine particulate matter that have a diameter less than 2.5 micrometers) are the most common. Fine particles are most often created through burning wood or fossil fuels and often get trapped in a person’s lung’s air sacs. Particles can also be coarse, like dust or pollen which commonly passes through a lung tissue and into the bloodstream. The city’s Air Quality and Health reported that 5% of premature deaths in Chicago are linked to exposure to PM2.5.
+According to the national weather services, air quality index (AQI) serves as to quantify how polluted the air is. For this project, I have only acquired data for PM2.5, Ozone and nitrogen dioxide but other chemicals such as carbon monoxide can serve as indicators as well. In 2020, Chicago was ranked as the 16th most polluted city in the US and received failing grades for ozone levels, largely attributed to vehicular emissions and exacerbated by climate change level-heat. In particular, Chicago’s air pollution levels, specifically PM2.5 (fine particulate matter that have a diameter less than 2.5 micrometers) are the most common. Fine particles are most often created through burning wood or fossil fuels and often get trapped in a person’s lung’s air sacs. Particles can also be coarse, like dust or pollen which commonly passes through a lung tissue and into the bloodstream. The city’s Air Quality and Health reported that 5% of premature deaths in Chicago are linked to exposure to PM2.5.
 
-Investigating the relationships between traffic, vehicular emissions and air quality in Chicago is important for multiple reasons. This project offers insights into the efficacy of current urban planning and environmental policies in a major U.S. city. Understanding the cause-effect relationship between the variables is curcial to develop strategies to counteract air pollution, an extreme public health hazard linked to respiratory and cardiovascular diseases. Additionally, the project can guide policymakers into making the best decisions in sectors such as traffic management, urban development and sustainable transportation, including the integration of electric vehicles (EVs). Focusing on Chicago's case provides valuable information that could be applicable to other large-growing cities such as Jakarta, Tokyo and New York. Ultimately, this project aims to contribute to a broader dialogue on transforming urban environments into healthier, more sustainable spaces.
+Investigating the relationships between traffic, vehicular emissions and air quality in Chicago is important for multiple reasons. This project offers insights into the efficacy of current urban planning and environmental policies in a major U.S. city. Understanding the cause-effect relationship between the variables is crucial to develop strategies to counteract air pollution, an extreme public health hazard linked to respiratory and cardiovascular diseases. Additionally, the project can guide policymakers into making the best decisions in sectors such as traffic management, urban development and sustainable transportation, including the integration of electric vehicles (EVs). Focusing on Chicago's case provides valuable information that could be applicable to other large-growing cities such as Jakarta, Tokyo and New York. Ultimately, this project aims to contribute to a broader dialogue on transforming urban environments into healthier, more sustainable spaces.
 
-## Conceptual Model
+# Conceptual Model
 
 The "environment" being modeled in this project is represented in three aspects: social, built and economic. It provides a comprehensive framework to understand the multifaceted nature of air quality and vehicular emissions in Chicago.
 
-<p class="bold"> Social Environment:</p> 
+### Social Environment 
 
-This aspect focuses on the public awareness, lifestyle choices, and community behaviors that impact air quality. It includes factors such as the general awareness of environmental issues, the propensity of the population to use public transport or private vehicles, and the public's willingness to adopt new technologies like electric vehicles (EVs). The social environment also looks into the health impacts of air quality on different demographics within the city, highlighting how air pollution disproportionately affects certain communities.
+This aspect focuses on the public awareness, lifestyle choices, and community behaviors that impact air quality. It includes factors such as the general awareness of environmental issues, the propensity of the population to use public transport or private vehicles, and the public's willingness to adopt new technologies like EVs. The social environment also looks into the health impacts of air quality on different demographics within the city, highlighting how air pollution disproportionately affects certain communities.
 
-<p class="bold"> Built Environment: </p>
+### Built Environment
 
 This refers to the physical infrastructure of Chicago, including its roads, buildings, and public transport systems. The layout of the city, the density of traffic on its roads, and the availability and efficiency of public transport all play crucial roles in determining the level of vehicular emissions. The built environment also encompasses urban planning and policy decisions, such as zoning laws and traffic management strategies, which directly affect traffic flow.
 
-<p class="bold"> Economic Environment: </p>
+### Economic Environment
 
 This component looks at the economic factors that influence air quality, such as the cost of owning and operating vehicles, the economic incentives or disincentives for using EVs, and the funding available for public transport and infrastructure projects. The economic environment also includes the analysis of the economic impacts of air pollution, such as healthcare costs and lost productivity due to health issues stemming from poor air quality.
 
 ### Urban fabric and city methodologies
 
-We can use the information from week 8's lecture into this project.The social environment is not just about the public awareness but also reflect the deeper socio-spatial fabric of Chicago, where neighborhood characteristics is able to shape the environmental attitudes. This concept is included in the 5D's of the built environment, specifically focusing on **Design**, or the characteristics of street networks within an area. Attributes such as intersections, pedestrian crossings, and street widths are closely linked to traffic density in specific areas. Additionally, the implementation of benefits regarding the use of electric vehicles (EVs), such as HOV lane access, is expected to influence people to make the switch. The built environment's focus shifts from general infrastructure to specific urban design elements that dictate traffic flow. In terms of the 5D's, all could be incorporated to the built environment, however the most prevalent ones include **Distance to Transit** and **Destination Accessibility**. Attributes includes the distance to the central business district, distance to public transportation and number of stations per unit area. Quantifying these attributes can help in building a more comprehensive picture of the issue of traffic. 
+We can use the information from week 8's lecture into this project. The social environment is not just about the public awareness but also reflect the deeper socio-spatial fabric of Chicago, where neighborhood characteristics is able to shape the environmental attitudes. This concept is included in the 5D's of the built environment, specifically focusing on **Design**, or the characteristics of street networks within an area. Attributes such as intersections, pedestrian crossings, and street widths are closely linked to traffic density in specific areas. Additionally, the implementation of benefits regarding the use of electric vehicles (EVs), such as HOV lane access, is expected to influence people to make the switch. The built environment's focus shifts from general infrastructure to specific urban design elements that dictate traffic flow. In terms of the 5D's, all could be incorporated to the built environment, however the most prevalent ones include **Destination Accessibility**. Attributes includes transit route density, distance to public transportation and number of stations per unit area. Quantifying these attributes can help in building a more comprehensive picture of the issue of traffic.Through the economic environment, the intersection between economic changes and urban morphology becomes more important, as it represents how the spatial layout of the city influences the economic feasibility of sustainable transportation such as EVs and the usage of private vehicles over public transport. Within the 5D's, this can be represented through **Distance to Transit** which includes variables such as distance to CBD and employment numbers within a certain radius.
 
-## Data Wrangling
+# Data Wrangling
+
+### Air Quality Index (AQI)
+
+
+### Traffic & Vehicular Emissions
+
+
+### Electric Vehicles
+
+
+
