@@ -1,0 +1,218 @@
+---
+title: "GGIS 224 Final Project Data Wrangling and Spatial Operations"
+author: "Warren Jodjana"
+date: "December 14th 2023"
+output:   
+  html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
+---
+
+
+
+# Environment Setup
+```{r, echo=TRUE, message = FALSE}
+library(raster)
+library(dplyr)
+library(sf)
+library(terra)
+library(tmap)
+library(readxl)
+library(data.table)
+library(spatstat)
+```
+
+
+# Clean & Wrangle Data
+
+## Air Quality Index (AQI)
+
+### Load AQI data using `read_excel`
+```{r}
+airquality <- read_excel("air-quality-index.xlsx")
+glimpse(airquality)
+```
+### Load tract data using `st_read` 
+
+```{r}
+airquality_tracts <- st_read("tracts-aqi.geojson")
+data.table(airquality_tracts)
+```
+
+### Merge data using geoid
+```{r}
+airquality <- merge(airquality_tracts, airquality, by.x="geoid10", by.y="geoid", all.x=TRUE)
+```
+
+### Subset data
+```{r}
+airquality <- airquality %>%
+  select(-c("statefp10", "commarea_n", "commarea", "notes", "countyfp10"))
+```
+
+### Inspect data using `data.table`
+```{r}
+data.table(airquality)
+```
+
+### Save cleaned data
+```{r}
+write.csv(airquality, "airquality.csv")
+```
+
+## Traffic & Vehicular Emissions
+
+
+### Load traffic data using `fread`
+```{r}
+traffic <- fread("traffic-old.csv")
+glimpse(traffic)
+```
+
+### Convert to spatial format
+```{r}
+traffic <- st_as_sf(traffic, coords = c("Longitude", "Latitude"), crs = 4326)
+```
+
+### Inspect data using `data.table`
+```{r}
+data.table(traffic)
+```
+
+### Save cleaned data
+```{r}
+write.csv(traffic, "traffic.csv")
+```
+
+
+## Electric Vehicles
+
+### Load Alternative Fuel data using `fread`
+```{r}
+alternativefuel <- fread("alternativefuel.csv")
+```
+
+### Convert to spatial format
+```{r}
+alternativefuel <- st_as_sf(alternativefuel, coords = c("Longitude", "Latitude"), crs=4326)
+data.table(alternativefuel)
+```
+
+### Subset data
+```{r}
+electric_vehicles <- alternativefuel %>%
+  select(`ID`, `Fuel Type Code`, `Station Name`, `Street Address`, `Location`, `geometry`) %>%
+  filter(`Fuel Type Code` == "ELEC") %>%
+  mutate(`Street Address` = ifelse(`Station Name` == "Paul Simon Chicago JCC", "3348 S Kedzie Ave", `Street Address`)) %>%
+  select(-c("Fuel Type Code"))
+```
+
+### Inspect data using `data.table`
+```{r}
+data.table(electric_vehicles)
+```
+
+
+### Save cleaned data
+```{r}
+write.csv(electric_vehicles, "electric-vehicles.csv")
+```
+
+
+# Spatial Operations
+
+## Traffic Kernel Density Estimation
+
+```{r}
+boundary <- st_read("boundaries.geojson")
+```
+
+### Ensure both points and boundaries are the same CRS
+```{r}
+boundary <- st_transform(boundary, crs = 4326)
+```
+
+### Creating a two-dimensional point-pattern object
+
+```{r include=TRUE, warning=FALSE}
+coords <- st_coordinates(traffic) # extract coordinates from sf object
+bbox <- st_bbox(boundary) # define the observation window (bounding box) using the boundary data
+window <- owin(xrange = bbox[c("xmin", "xmax")], yrange = bbox[c("ymin", "ymax")])
+traffic.ppp <- ppp(coords[,1], coords[,2], window = window) # Create a ppp (two-dimensional point-pattern) object
+```
+
+### Perform Kernel Density Estimation
+
+```{r include=TRUE}
+kde <- density(traffic.ppp) # perform kernel density estimation
+kde_raster <- raster(kde) # converting KDE back to raster form
+kde_raster_masked <- mask(kde_raster, boundary) # clip the KDE in raster form to chicago boundaries
+```
+
+### Check bandwith and type of kernel
+
+```{r include=TRUE}
+str(kde) 
+```
+
+<br>
+
+## Kernel Density Estimation on Traffic in Chicago
+
+```{r include=TRUE, warning=FALSE}
+tmap_mode("view")
+chikde <- tm_shape(boundary) + tm_borders() +
+  tm_shape(kde_raster_masked) +
+  tm_raster(title="Traffic Density", style="cont", palette="Blues") +
+  tm_scale_bar(position = c("left", "bottom"))
+
+chikde
+```
+
+## Proximity Analysis
+
+```{r}
+nearest_traffic_index <- st_nearest_feature(electric_vehicles, traffic)
+nearest_traffic_distances <- st_distance(electric_vehicles, traffic[nearest_traffic_index, ], by_element = TRUE)
+
+
+tmap_mode("view")
+tm <- tm_shape(traffic) +
+  tm_bubbles(size = "ID", col = "red", border.col = "black", alpha = 0.5) + 
+  tm_shape(electric_vehicles) +
+  tm_symbols(col = "blue", size = 0.1) +
+  tm_layout(title = "EV Stations and Nearest Traffic Data Points")
+
+tm
+```
+
+
+## Comparative Analysis
+
+```{r}
+
+tmap_mode("plot")
+airquality_summary <- airquality %>% 
+  group_by(geoid10) %>% 
+  summarize(mean_NO2 = mean(CMAQ_NO2, na.rm = TRUE), 
+            mean_PM25 = mean(CMAQ_PM25, na.rm = TRUE), 
+            mean_O3 = mean(CMAQ_O3, na.rm = TRUE))
+
+
+
+plot_NO2 <- tm_shape(airquality_summary) +
+  tm_polygons("mean_NO2", title = "Mean NO2") +
+  tm_layout(main.title = "Spatial Distribution of NO2", main.title.size = 1)
+
+plot_PM25 <- tm_shape(airquality_summary) +
+  tm_polygons("mean_PM25", title = "Mean PM2.5") +
+  tm_layout(main.title = "Spatial Distribution of PM2.5", main.title.size = 1)
+
+plot_O3 <- tm_shape(airquality_summary) +
+  tm_polygons("mean_O3", title = "Mean O3") +
+  tm_layout(main.title = "Spatial Distribution of O3", main.title.size = 1)
+
+
+tmap_arrange(plot_NO2, plot_PM25, plot_O3)
+```

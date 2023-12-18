@@ -9,6 +9,17 @@ output:
     toc_float: true
 ---
 
+```{r, echo=FALSE, message=FALSE}
+library(raster)
+library(dplyr)
+library(sf)
+library(terra)
+library(tmap)
+library(readxl)
+library(data.table)
+library(spatstat)
+```
+
 ```{css, echo = FALSE}
 body {
   font-family: Garamond;
@@ -31,7 +42,7 @@ The idea behind my final project was influenced by my childhood in Indonesia, wh
 
 <p class="bold"> “How have vehicular emissions and traffic influence air quality trends in Chicago and how can EV vehicles play a role in reducing air pollution?” </p>
 
-According to the national weather services, air quality index (AQI) serves as to quantify how polluted the air is. For this project, I have only acquired data for PM2.5, Ozone and nitrogen dioxide but other chemicals such as carbon monoxide can serve as indicators as well. In 2020, Chicago was ranked as the 16th most polluted city in the US and received failing grades for ozone levels, largely attributed to vehicular emissions and exacerbated by climate change level-heat. In particular, Chicago’s air pollution levels, specifically PM2.5 (fine particulate matter that have a diameter less than 2.5 micrometers) are the most common. Fine particles are most often created through burning wood or fossil fuels and often get trapped in a person’s lung’s air sacs. Particles can also be coarse, like dust or pollen which commonly passes through a lung tissue and into the bloodstream. The city’s Air Quality and Health reported that 5% of premature deaths in Chicago are linked to exposure to PM2.5.
+According to the national weather services, air quality index (AQI) serves as to quantify how polluted the air is. For this project, I have only acquired data for PM2.5, Ozone and nitrogen dioxide but other chemicals such as carbon monoxide can serve as indicators as well. In 2020, Chicago was ranked as the 16th most polluted city in the US and received failing grades for ozone levels, largely attributed to vehicular emissions and exacerbated by climate change level-heat, [(ABC7, 2020)](https://abc7chicago.com/chicago-state-of-the-air-report-quality-pollution-polluted/6119437/#:~:text=,result%20of%20climate%20change%2C%20placing). In particular, Chicago’s air pollution levels, specifically PM2.5 (fine particulate matter that have a diameter less than 2.5 micrometers) are the most common. Fine particles are most often created through burning wood or fossil fuels and often get trapped in a person’s lung’s air sacs. Particles can also be coarse, like dust or pollen which commonly passes through a lung tissue and into the bloodstream. The city’s Air Quality and Health reported that 5% of premature deaths in Chicago are linked to exposure to PM2.5, [(Gupta et al, 2022)](https://chicago.suntimes.com/2022/5/16/23069860/dangerous-air-we-breathe-mapping-chicago-air-pollution-hotspots-pm2-5-particulate-matter) .
 
 Investigating the relationships between traffic, vehicular emissions and air quality in Chicago is important for multiple reasons. This project offers insights into the efficacy of current urban planning and environmental policies in a major U.S. city. Understanding the cause-effect relationship between the variables is crucial to develop strategies to counteract air pollution, an extreme public health hazard linked to respiratory and cardiovascular diseases. Additionally, the project can guide policymakers into making the best decisions in sectors such as traffic management, urban development and sustainable transportation, including the integration of electric vehicles (EVs). Focusing on Chicago's case provides valuable information that could be applicable to other large-growing cities such as Jakarta, Tokyo and New York. Ultimately, this project aims to contribute to a broader dialogue on transforming urban environments into healthier, more sustainable spaces.
 
@@ -53,17 +64,315 @@ This component looks at the economic factors that influence air quality, such as
 
 ### Urban fabric and city methodologies
 
-We can use the information from week 8's lecture into this project. The social environment is not just about the public awareness but also reflect the deeper socio-spatial fabric of Chicago, where neighborhood characteristics is able to shape the environmental attitudes. This concept is included in the 5D's of the built environment, specifically focusing on **Design**, or the characteristics of street networks within an area. Attributes such as intersections, pedestrian crossings, and street widths are closely linked to traffic density in specific areas. Additionally, the implementation of benefits regarding the use of electric vehicles (EVs), such as HOV lane access, is expected to influence people to make the switch. The built environment's focus shifts from general infrastructure to specific urban design elements that dictate traffic flow. In terms of the 5D's, all could be incorporated to the built environment, however the most prevalent ones include **Destination Accessibility**. Attributes includes transit route density, distance to public transportation and number of stations per unit area. Quantifying these attributes can help in building a more comprehensive picture of the issue of traffic.Through the economic environment, the intersection between economic changes and urban morphology becomes more important, as it represents how the spatial layout of the city influences the economic feasibility of sustainable transportation such as EVs and the usage of private vehicles over public transport. Within the 5D's, this can be represented through **Distance to Transit** which includes variables such as distance to CBD and employment numbers within a certain radius.
+We can use the information from week 8's lecture into this project, [(Kolak, 2023)](https://docs.google.com/presentation/d/1ZA1pUVQ0cY5L4j4qrvX5zpAirIu6KuADP16TifR0DAE/edit?usp=sharing). The social environment is not just about the public awareness but also reflect the deeper socio-spatial fabric of Chicago, where neighborhood characteristics is able to shape the environmental attitudes. This concept is included in the 5D's of the built environment, specifically focusing on **Design**, or the characteristics of street networks within an area. Attributes such as intersections, pedestrian crossings, and street widths are closely linked to traffic density in specific areas. Additionally, the implementation of benefits regarding the use of electric vehicles (EVs), such as HOV lane access, is expected to influence people to make the switch. The built environment's focus shifts from general infrastructure to specific urban design elements that dictate traffic flow. In terms of the 5D's, all could be incorporated to the built environment, however the most prevalent ones include **Destination Accessibility**. Attributes includes transit route density, distance to public transportation and number of stations per unit area. Quantifying these attributes can help in building a more comprehensive picture of the issue of traffic.Through the economic environment, the intersection between economic changes and urban morphology becomes more important, as it represents how the spatial layout of the city influences the economic feasibility of sustainable transportation such as EVs and the usage of private vehicles over public transport. Within the 5D's, this can be represented through **Distance to Transit** which includes variables such as distance to CBD and employment numbers within a certain radius.
 
 # Data Wrangling
 
 ### Air Quality Index (AQI)
 
+The data for the air quality index was sourced from the Northwestern Climate Change Research Group, accessible, with permission via the [chichives](https://docs.google.com/document/d/1kvxN1ECJIYuWTzhPWer0J9VP38OPmaz82hMn9ki7wMI/edit) website. The AQI data spans the years 2018-2019. 
+
+Firstly, since the dataset is an .xlsx file I would need to use the `read_excel` function from the `readxl` package:
+
+```{r}
+airquality <- read_excel("air-quality-index.xlsx")
+glimpse(airquality)
+```
+Since there are only four columns in the dataset — the geoid and the pollutants' numbers — I needed to find another dataset to convert it into a spatial form. Fortunately, the metadata indicates that all the pollutants correspond to tract-level data. Hence, I sourced the tract-level data from the [Chicago Data Portal](https://data.cityofchicago.org/Facilities-Geographic-Boundaries/Boundaries-Census-Tracts-2010/5jrd-6zik) and merged both datasets based on the geoid using the `merge()` function from `dplyr`.
+
+```{r, eval=FALSE, message=FALSE}
+airquality_tracts <- st_read("tracts-aqi.geojson")
+airquality <- merge(airquality_tracts, airquality, by.x="geoid10", by.y="geoid", all.x=TRUE)
+```
+
+Finally, I opened the dataset using `data.table` function and looked through to ensure there wasn't any missing values. Afterwards, I saved it under a new CSV file.
+
+```{r, eval=FALSE, message=FALSE}
+data.table(airquality)
+write.csv(airquality, "airquality.csv")
+```
+
+As I mentioned previously, air quality index can be made up of many different chemicals, however to make this project more simplified, I decided to stick with only Nitrogen Dioxide (NO~2~), Ozone (O~3~) and Particulate Matter (PM~2.5~). Other pollutants can be seen below:
+
+**Figure 1:**
+
+*Air Quality Index Pollutants*
+
+![*Note.* From: [(Nick Routley, 2020)](https://www.visualcapitalist.com/how-air-quality-index-works/)](img/aqi-pollutants.png)
+
 
 ### Traffic & Vehicular Emissions
 
+The traffic data is taken from the [Chicago Data Portal](https://data.cityofchicago.org/Transportation/Average-Daily-Traffic-Counts-Map/pf56-35rv), as average daily traffic counts, meaning that the numbers reflect the average amount of vehicles passing a certain point or intersection over a typical 24-hour period. 
 
-### Electric Vehicles
+Firstly, I loaded the CSV data using `fread`, which is part of the `data.table` package:
+
+```{r, eval=FALSE, message=FALSE}
+traffic <- fread("traffic-old.csv")
+```
+
+Next, I converted the CSV to spatial form using the `st_as_sf` function from the `sf` package. I kept the CRS (Coordinate Reference System) standardized to be 4326:
+
+```{r eval=FALSE, message=FALSE}
+traffic <- st_as_sf(traffic, coords = c("Longitude", "Latitude"), crs = 4326)
+```
+
+
+Finally, I opened the dataset using `data.table` function and looked through to ensure there wasn't any missing values. Afterwards, I saved it under a new CSV file:
+
+```{r, eval=FALSE, message=FALSE}
+data.table(traffic)
+write.csv(traffic, "traffic.csv")
+```
+
+### Electric Vehicle Stations
+
+The electric vehicles stations data is taken from the [Chicago Data Portal](https://data.cityofchicago.org/Environment-Sustainable-Development/Alternative-Fuel-Locations-Chicago/fi3z-jc3f/about_data), under the alternative fuel stations. The alternative fuel stations data set is taken from 2015-2023 and is updated on a daily basis. 
+
+Firstly, I loaded the CSV data using `fread`:
+
+```{r, message=FALSE, eval=FALSE}
+alternativefuel <- fread("alternativefuel.csv")
+```
+
+Next I converted the CSV to spatial form, using the same method as the one for traffic, keeping the CRS consistent (4326):
+
+```{r, message=FALSE, eval=FALSE}
+alternativefuel <- st_as_sf(alternativefuel, coords = c("Longitude", "Latitude"), crs=4326)
+```
+
+Then, I looked through the alternative fuel data in order to figure out which columns I needed to subset:
+
+```{r, messsage=FALSE, eval=FALSE}
+data.table(alternativefuel)
+```
+
+The table is shown below:
+
+**Table 1:**
+
+*Alternative Fuel Dataset*
+
+![*Note.* From: [(Chicago Data Portal, 2023)]((https://data.cityofchicago.org/Environment-Sustainable-Development/Alternative-Fuel-Locations-Chicago/fi3z-jc3f/about_data)) and edited on RStudio](img/alternativefuel-table.png)
+
+
+<br>
+
+I identified that the "Fuel Type Code" column represented the specific alternative fuels station, but since I just needed electric vehicles, I had to filter out the stations that had the code of "ELEC" by using the `filter()` method from `dplyr`. I also selected only the columns I needed:
+
+```{r, message=FALSE, eval=FALSE}
+electric_vehicles <- alternativefuel %>%
+  select(`ID`, `Fuel Type Code`, `Station Name`, `Street Address`, `Location`, `geometry`) %>%
+  filter(`Fuel Type Code` == "ELEC") %>%
+```
+
+Then there was 1 station that didn't have a value for the "Street Address", so I used google maps to search up the address and used the `mutate()` function from `dplyr` to add that address. I also removed the "Fuel Type Code" from the dataset since all of them was already electric vehicles:
+
+```{r, message=FALSE, eval=FALSE}
+electric_vehicles <- electric_vehicles %>%
+    mutate(`Street Address` = ifelse(`Station Name` == "Paul Simon Chicago JCC", "3348 S Kedzie Ave", `Street Address`)) %>%
+    select(-c("Fuel Type Code"))
+```
+
+Finally, I opened the dataset using `data.table` function and looked through to ensure there wasn't any other missing values. Afterwards, I saved it under a new CSV file:
+
+```{r, message=FALSE, eval=FALSE}
+data.table(electric_vehicles)
+write.csv(electric_vehicles, "electric-vehicles.csv")
+```
+
+# Exploratory Methods
+
+### Traffic Kernel Density Estimation
+
+#### What is Kernel Density Estimation (KDE)?
+
+Firstly, I decided on kernel density estimation (KDE) in order to develop a heat map for traffic. KDE is a non-parametric method to estimate the propability density function of a random variable. In the context of traffic data, these variables are the vehicle counts at specific points. KDE operates by placing a 'kernel' (smooth, bell-shaped curve) at each data point and summing all the individual kernels to create a continuous density surface across the study area. IN my case, this surface will represent the concentration of traffic events. The resulting heat map will depict variations in traffic density, with warmer colors indicating higher concentrations of traffic and cooler colors showing lower concentrations. In essence, makes it easier for us to distinguish between high and low traffic in Chicago.
+
+#### Why is it useful?
+
+KDE offers several advantages. Firstly, its visualization is important in identifying areas with varying traffic volumes, which can be utilised for urban planning and traffic management. They are particularly crucial in densely populated urban areas, such as Chicago, where traffic congestion can significantly impact daily life. Next, KDE is adept at handling the complexity of spatial traffic data, which is often dispersed and varied. This simplification is crucial for decision-makers who need to understand traffic flows without looking into the intricacies of raw data. Another advantage of KDE is that its very flexible to adjust through the bandwith paramter, which controls the level of smoothing in the density estimation.  This feature is particularly beneficial as it provides the flexibility to tailor the analysis to specific needs. Finally, KDE offers comprehensive coverage of traffic patterns. Unlike simple point maps, which might only highlight isolated high-traffic areas, KDE considers the influence of nearby points. This approach results in a more holistic view of traffic patterns, ensuring that the analysis captures the nuances of how traffic flows and accumulates across a given area.
+
+#### KDE Implementation
+
+
+##### Point-Pattern Object
+
+Firstly, I converted the traffic data from tabular form to a point pattern-object. I had to extract the coordinates that represents the location of traffic events using the `st_coordinates` function from the `sp` package. 
+
+```{r, message=FALSE, eval=FALSE}
+coords <- st_coordinates(traffic)
+```
+
+Then I had to build a bounding box which is defined by using boundary data of the study area, in this case, Chicago. This bounding box outlines the geographical extent within which the KDE will be performed, ensuring that the analysis is focused and relevant to the area of interest. I did this using the `st_bbox` function, also from the `sp` package. 
+
+```{r, message=FALSE, eval=FALSE}
+bbox <- st_bbox(boundary)
+```
+
+Then I created an observation window, used to define a spatial window using the `owin()` function from `spatstat` package. The `bbox[c("xmin", "xmax")]` and `bbox[c("ymin", "ymax")]` are used to extract the minimum and maximum x-coordinates (longitude) and y-coordinates (latitude) from the bounding box. These coordinates then set the horizontal and vertical limits for the spatial window.
+
+```{r, message=FALSE, eval=FALSE}
+window <- owin(xrange = bbox[c("xmin", "xmax")], yrange = bbox[c("ymin", "ymax")])
+```
+
+Finally, I used the `ppp` function from the `spatstat` package to convert the data to point pattern.
+
+```{r, message=FALSE, eval=FALSE}
+traffic.ppp <- ppp(coords[,1], coords[,2], window = window)
+```
+
+##### Perform Kernel Density Estimation
+
+Once ppp object is ready, KDE is applied. This step involves overlaying a Gaussian kernel on each point in the pattern. Fortunately, there is a `density` function part of R, so I can easily perform KDE.
+
+```{r, message=FALSE, eval=FALSE}
+kde <- density(traffic.ppp)
+```
+
+Next, convert the new continuous density surface to raster form using `raster` function from `raster` package.
+
+```{r, message=FALSE, eval=FALSE}
+kde_raster <- raster(kde)
+```
+**Note:** `raster` package should be one of the first packages or else functions from `dplyr` won't start working due to conflicts
+
+Finally, clip the continuos density surface to chicago boundaries using the `mask` function from `raster` package.
+
+```{r, message=FALSE, eval=FALSE}
+kde_raster_masked <- mask(kde_raster, boundary)
+```
+
+##### Check bandwith and Kernel
+
+We can use the `str` function from the base R package in order to check the bandwidth and kernel type. As we can see the bandwith is the standard (under sigma), 0.0437 and the kernel density is of type `gaussian` as we expected:
+
+**Figure 2:**
+
+*Kernel Density Estimation Structure*
+
+![*Note.* From: [(Chicago Data Portal, 2023)](https://data.cityofchicago.org/Transportation/Average-Daily-Traffic-Counts-Map/pf56-35rv) and edited on RStudio](img/kde-structure.png)
+
+### EVs Station Proximity Analysis
+
+#### What is Proximity Analysis?
+
+Proximity Analysis is a technique used to evaluate the closeness of points in space. In this context, this we can use proximity analysis to determine the distances between EV stations and other relevant geographical features, like traffic hotspots, residential areas or commercial centers. We will be using proximity analysis to map the closest traffic point. 
+
+#### Why is it useful?
+
+In urban planning and transportation management, proximity analysis is extremely important. By understanding the distances between EV stations and high-traffic locations, urban planners can identify how accessible these stations are to drivers. This can help convince people to switch to electric vehicles as it ensures that charging infrastructure is not only available but also conveniently located where drivers need it most. Such strategic placement of EV stations can alleviate range anxiety among potential EV users, a common barrier to adoption. Furthermore, aligning EV station locations with traffic patterns and density can significantly enhance the efficiency of transportation networks. It allows for better resource allocation, ensuring that high-demand areas are adequately served. This approach also aids in reducing congestion in urban centers by encouraging the use of EVs, which are often more suitable for city driving. 
+
+#### Proximity Analysis Implementation
+
+Proximity Analysis is quite straightforward. We just need to calculate the distance from each EV station to the nearest traffic point, which can be achieved using the. `st_nearest_feature` and `st_distance` functions from the `sf` package:
+
+```{r, message=FALSE, eval=FALSE}
+nearest_traffic_index <- st_nearest_feature(electric_vehicles, traffic)
+nearest_traffic_distances <- st_distance(electric_vehicles, traffic[nearest_traffic_index, ], by_element = TRUE)
+```
+
+During the process of `st_nearest_feature`, the function returns a vector of indices. Each index corresponds to the position of the nearest traffic point in the traffic dataset for each EV station in the electric_vehicles dataset. While the `st-distance` function calculates the distance between the pairs of geometries. electric_vehicles is the first geometry while traffic[nearest_traffic_index, ] is the second set of geometries. by_element = TRUE: This parameter ensures that the function calculates the distance between each pair of geometries (each EV station to its nearest traffic point) individually. Finally, the output is a numeric vector of distances, where each element of the vector is the distance from an EV station to its nearest traffic point.
+
+
+### Air Quality Index Comparative Analysis
+
+#### What is Comparative Analysis
+
+Comparative Analysis is a method used to compare and contrast different levels of values that make up a specific index, in this case it would be the different pollutants that make up air quality index in Chicago. This form of analysis can help us understand the spatial distribution and relative intensity of air pollutants such as NO~2~, PM~2.5~ and O~3~. Through comparing pollutants, we can identify areas that have the highest lvels of air pollution and understand the sources and impacts of these pollutants.
+
+#### Why is it useful?
+
+Comparative Analysis can bring advantages when understanding environmental and human health impacts. For example, nitrogen dioxide is associated with vehicular emissions, while fine particles are from construction sites, fires or natural sources. Ozone, on the other hand, often forms in the atmosphere under slight. When we conduct a spatial distribution for these pollutants, we can identify the likely sources in different areas. Nitrogen dioxide can correspond to high levels of traffic congestion, while elevated fine particle levels would most likely be in industrial areas. This form of analysis can also help open up spatial inequalities in air quality. Certain areas may exhibit higher pollution levels due to nearby pollution sources, topography or lack of green spaces. Identifying these disparities is crucial for environmental justice and equitable policy making.
+
+#### Comparative Analysis Implementation
+
+Similarly to proximity analysis, comparative analysis is also straightforward. We just need to group the airquality data by using the geoid and then summarize the mean levels of each pollutant. This summarized data can then be used for further analysis, such as visualizing air quality levels across different areas, identifying areas with high pollution levels, and informing policy decisions related to air quality management.
+
+```{r message=FALSE, eval=FALSE}
+airquality_summary <- airquality %>% 
+  group_by(geoid10) %>% 
+  summarize(mean_NO2 = mean(CMAQ_NO2, na.rm = TRUE), 
+            mean_PM25 = mean(CMAQ_PM25, na.rm = TRUE), 
+            mean_O3 = mean(CMAQ_O3, na.rm = TRUE))
+```
+
+Firstly, we have the airquality data. Next, we use the `group_by` function from `dplyr` to group the data by geoid. Then, we use the `summarize` method to calculate summary statistics for each group defined by `group_by`. Finally, we have three different operations to calculate the average of each pollutant level by using the `mean` function. The result is a new data frame where each row represents a unique geoid10 value, and the columns mean_NO2, mean_PM25, and mean_O3 represent the average values of NO~2~, PM~2.5~, and O~3~, respectively, for that geographic area.
+
+# Results
+
+All maps are developed by the `tmap` and `leaflet` package. The first two is using the view mode and the last one is using the plot mode.
+
+### Traffic Density Heatmap
+
+**Map 1: **
+
+*Examination of Traffic Flow in Chicago*
+
+![*Note.* From: [(Chicago Data Portal, 2023)](https://data.cityofchicago.org/Transportation/Average-Daily-Traffic-Counts-Map/pf56-35rv) and edited on RStudio](img/traffic-density.png)
+
+<br>
+
+The traffic density heatmap above is a map that pictures the vehicular movement in Chicago's neighborhood and central business district. I decided to use the Blues palette in order to visualize the color gradient between high and low densities of traffic. The darkest colors indicated the highest traffic concentration areas were reaching up to 30,000+ vehicles. This gradient is not just a measure of quantity but also an indicator of potential traffic stress points within the city's transport infrastructure. When you look more closely, the map reveals that the areas with darker blue traces the routes most frequented by commuters. These are the major expressways that bring traffic in and out of Chicago's downtown. The flow of traffic volume are characteristic of urban centers and are often most pronounced during peak commuting hours. 
+
+Intermediate traffic densities, indicated by mid-tones of blue, likely represent secondary roads. These are crucial for the dispersal of traffic from the highways to residential and commercial zones, and their traffic densities can provide information into the living patterns of residents, the location of workplaces, and the effectiveness of the city's traffic design. The variability in traffic flow across these areas could also suggest the presence of local schools, parks, and shopping areas, which act as activities throughout the day.The outer edges of the heatmap show lighter shades of blue, indicating low traffic volumes. This shows that those areas are less developed and suburban, where the population density is lower, hence less demand for road travel. Another observation is that these areas are accessible within the Chicago public transit and bus system, making it more convenient and preferred option over private vehicles. Finally, these areas may also indicate low concentration of businesses and commercial venues, which means less people, which means less vehicle presence.
+
+The data on this map is important for city planners and policymakers who work on urban development in Chicago. The heatmap not only highlights current traffic conditions but also serves as a predictive model for future infrastructure. It uncovers the areas where there still needs to be more attention to alleviate traffic congestion, possibly through betterment of public transportation or expansion of roads.
 
 
 
+### Electric Vehicles Proximity Analysis
+
+**Map 2: **
+
+*EVs Proximity Analysis*
+
+![*Note.* From: [(Chicago Data Portal, 2023)](https://data.cityofchicago.org/Environment-Sustainable-Development/Alternative-Fuel-Locations-Chicago/fi3z-jc3f/about_data), [(Chicago Data Portal, 2023)](https://data.cityofchicago.org/Transportation/Average-Daily-Traffic-Counts-Map/pf56-35rv) and edited on RStudio](img/evs-traffic.png)
+
+<br>
+
+The map above provides a visualization of electric vehicle (EV) stations in relation to traffic monitoring points within Chicago. The red circles denote the locations of EV charging stations, while blue dots represents traffic data points collected in close proximity to these stations.
+
+When examining the distribution of stations, it's easy to identify that they are common throughout the city, with a particularly dense network in the urban center. This suggests a targeted initiative to support EV adoption in areas with high traffic density. The strategic placement of these stations in central locations maximizes accessibility for EV drivers and is likely an attempt to encourage the transition from combustion engines to more sustainable alternatives. The blue dots, signifying traffic data points, are notably numerous and closely interspersed among the EV stations, especially in areas that display a higher density of red circles. This proximity indicates a methodical approach to collecting traffic data where electric vehicle usage is potentially most concentrated. The data collection is critical in assessing the integration of EVs into the existing traffic system and understanding the impact of EVs on traffic flow and infrastructure.
+
+In contrast, the outer edges of the map show a less dense distribution of EV stations, which may point to a need for expansion of the charging network into these areas. This could promote broader adoption of electric vehicles beyond the city center and support environmental goals across a wider geographic area. However, it could also show that those areas don't have as much population which may indicate that they don't need as much stations.
+
+For urban planners and policymakers, this map helps to assess the current state of EV infrastructure alignment with traffic density but also aids in identifying potential areas for further development. The information coming from this mapping can impact future urban planning decisions, such as where to increase the number of EV charging stations to meet driver demand and how to optimize traffic flow in areas with high EV station density.
+
+
+### Air Quality Index Comparative Analysis
+
+**Map 3: **
+
+*AQI Comparative Analysis*
+
+![*Note.* From: [(Northwestern Climate Change Research Group, 2018)](https://docs.google.com/document/d/1kvxN1ECJIYuWTzhPWer0J9VP38OPmaz82hMn9ki7wMI/edit) and edited on RStudio](img/aqi-graphs.png)
+
+<br>
+
+The three maps above visualise the spatial distribution of each pollutant in the air quality index, more specifically for nitrogen dioxide, particulate matter (less than 2.5 diameter) and ozone. 
+
+**Spatial Distribution of NO~2~:** NO~2~ is a notorious byproduct of fossil fuel combustion, with motor vehicles and industrial operations being primary sources. In interpreting this map, the areas with darker shades likely correspond to the crowded roadways and industrial sectors of Chicago. These could be the highways, major intersections, and industrial zones that power the city's economy but also has the highest levels of pollution. The correlation between these darker shades and the previously analyzed traffic density heatmap could be substantial. The traffic heatmap indicated areas of high vehicle counts, which align with the regions on the NO~2~ map exhibiting elevated NO~2~ levels, suggesting a direct link between traffic congestion and NO2 pollution.
+
+**Spatial Distribution of PM~2.5~:** PM~2.5~ refers to particulate matter that is less than 2.5 micrometers in diameter, which can be composed of various components including acids (such as nitrates and sulfates), organic chemicals, metals, and soil or dust particles. Fine particulate matter is of particular concern due to its ability to penetrate deep into the respiratory tract, reaching the lungs and even entering the bloodstream. On the map, areas with darker shades suggest higher levels of PM~2.5~, which could be associated with a variety of sources. In urban settings, PM~2.5~ typically originates from combustion-related sources such as motor vehicles, power plants, residential wood burning, and industrial processes, as well as from certain chemical reactions that occur in the atmosphere. Additionally, construction sites, unpaved roads, and fields can also contribute to PM~2.5~ levels when fine particles of dust are stirred up and become airborne.
+
+**Spatial Dsitribution of O~3~:** Ozone at ground level is not emitted directly into the air but is created by chemical reactions between oxides of nitrogen (NOx) and volatile organic compounds (VOC) in the presence of sunlight. The map’s darker regions, indicating higher O~3~ concentrations, are likely to correspond with areas experiencing intense solar radiation and significant emissions from vehicles and industrial processes. Correlating the O~3~ distribution with the earlier traffic and EV station maps might indicate that while traffic contributes to the precursors for ozone formation, the intensity of O~3~ pollution is also heavily dependent on environmental factors such as weather conditions. Another potential observation is that higher levels of ozone is nearby Lake Michigan, which could explain more scientifically about how solar reflection can develop chemical reactions that form larger amounts of ozone.
+
+
+# Discussion
+
+### Key Findings
+
+The findings of this project offer important information about the relationship between traffic, air quality, and the availability of electric vehicle (EV) infrastructure in Chicago. The primary goal was to understand how vehicular emissions and traffic influence air quality and to explore the potential role of EVs in mitigating air pollution.
+
+**1. Traffic Density and Air Quality:** The traffic density heatmap clearly indicated that the highest traffic areas, especially in the central business district and major expressways, correlate with elevated levels of nitrogen dioxide (NO~2)~. This finding aligns with the hypothesis that vehicular emissions significantly contribute to air pollution. The spatial patterns observed in the NO2 map suggest that areas with heavy traffic are indeed major contributors to air pollution.
+
+**2. EV Station Distribution and Traffic Patterns:** The proximity analysis of EV stations showed a dense network in urban centers, implying a strategic effort to integrate EVs in areas with significant traffic congestion. This approach potentially alleviates traffic-induced air pollution by promoting the adoption of cleaner transportation alternatives.
+
+**3. Comparative Analysis of Air Quality Indicators:** The spatial distribution of different pollutants (NO~2~, PM~2.5~, and O~3~) revealed that air quality in Chicago is influenced by a variety of sources. The concentration of particulate matter (PM~2.5~) in industrial and construction areas and the influence of environmental factors on ozone (O~3~) levels, such as proximity to Lake Michigan, were notable observations.
+
+Through these three key points, we can summaries that there is indeed a correlation between air quality index and traffic density. Furthermore, EV stations have grown to a substantial amount, indicating that the city of Chicago is moving towards a more sustainable future through electric vehicles.
+
+### Limitations and Future Work
+
+While the project offers alot of valuable information, it also presents certain limitations. Firstly, the analysis was primarily centered on spatial patterns, overlooking the temporal variations in traffic and air quality. Incorporating a time series analysis would improve the understanding of how these elements fluctuate throughout different times of day and across seasons. Additionally, the scope of pollutants examined was restricted to specific types; future research expanding the range of pollutants could yield a more comprehensive picture of air quality. Socio-economic factors, which significantly influence traffic patterns and EV adoption rates, were not factored into this study. A more holistic approach that includes these aspects would provide better understanding of adopting more EVs. Lastly, an assessment of the impact of existing and potential environmental and traffic policies on air quality and EV adoption is missing. An evaluation of this could offer valuable information for policymakers aiming to enhance urban environmental health.
