@@ -1,2 +1,1 @@
-# ggis224-finalproject
- 
+# Chicago Environmental Analysis
